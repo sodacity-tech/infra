@@ -1,10 +1,10 @@
-name: validate & check formatting of terraform code
+name: run code quality checks
 
 on: push
 
 env:
-  AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
-  AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
   terraform_validate_fmt:
@@ -16,7 +16,7 @@ jobs:
       - name: set up terraform
         uses: hashicorp/setup-terraform@344fef46b6edc7c46ce8b3b8b0a3ece7e77e05f0
         with:
-          terraform_version: 1.9.8
+          terraform_version: ">= 1.9.8"
 
       - name: initialize terraform
         run: terraform init
@@ -25,4 +25,4 @@ jobs:
         run: terraform validate
 
       - name: check terraform code formatting
-        run: terraform fmt -write=false -diff
+        run: terraform fmt -write=false -check -diff

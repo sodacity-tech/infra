@@ -1,0 +1,128 @@
+name: deploy infra
+
+on: workflow_dispatch
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_VAR_hcloud_api_token: ${{ secrets.HCLOUD_API_TOKEN }}
+  TF_VAR_vm_ssh_key: ${{ vars.VM_SSH_KEY }}
+
+jobs:
+  terraform_plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      terraform_plan_exitcode: ${{ steps.exec_terraform_plan.outputs.terraform_plan_exitcode }}
+    steps:
+      - name: checkout this repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: set up terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: ">= 1.9.8"
+          terraform_wrapper: false # needed to get correct exitcode from terraform plan
+
+      - name: initialize terraform
+        run: terraform init
+
+      - name: generate terraform plan & capture exit code
+        id: exec_terraform_plan
+        run: |
+          set +e
+          terraform plan -input=false -detailed-exitcode -out=tf.plan
+          exitcode=$?
+          set -e
+
+          echo "terraform_plan_exitcode=$exitcode" >> $GITHUB_OUTPUT
+
+          if [[ $exitcode -eq 2 ]]; then
+            echo "'terraform plan' succeeded with non-empty diff..."
+            exit 0
+          else
+            exit $exitcode
+          fi
+
+      - if: steps.exec_terraform_plan.outputs.terraform_plan_exitcode == 2
+        name: save terraform plan as artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: tf-plan-${{ github.run_id }}
+          path: tf.plan
+
+  terraform_apply:
+    runs-on: ubuntu-24.04
+    needs: terraform_plan
+    if: needs.terraform_plan.outputs.terraform_plan_exitcode == 2
+    environment: prd
+    outputs:
+      hcloud_vm_ipv4s_json: ${{ steps.get_hcloud_vm_ipv4s.outputs.hcloud_vm_ipv4s_json }}
+    steps:
+      - name: checkout this repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: set up terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: ">= 1.9.8"
+
+      - name: initialize terraform
+        run: terraform init
+
+      - name: download terraform plan artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: tf-plan-${{ github.run_id }}
+
+      - name: apply terraform plan
+        run: terraform apply -input=false -auto-approve tf.plan
+
+      - name: save ip addresses of hetzner vms from terraform output as stringified json array
+        id: get_hcloud_vm_ipv4s
+        run: echo "hcloud_vm_ipv4s_json=$(jq -Mc .hcloud_vm_ipv4s.value <(terraform output -json))" >> $GITHUB_OUTPUT
+
+  k3s_deploy:
+    runs-on: ubuntu-24.04
+    needs: terraform_apply
+    steps:
+      - name: checkout this repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: checkout k3s-ansible repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: k3s-io/k3s-ansible
+          ref: 2a5a89a5ad5afc8ce0bd6112450e956dcdcde74f
+          path: k3s-ansible
+
+      - name: generate ansible inventory for k3s deploy
+        run: |
+          cat <<EOF > k3s-ansible/inventory.yml
+          k3s_cluster:
+            vars:
+              ansible_port: 22
+              ansible_user: soda
+              k3s_version: v1.30.2+k3s1
+              api_endpoint: "{{hostvars[groups.server[0]].ansible_host|default(groups.server[0])}}"
+            children:
+              server:
+                hosts:
+                  $(jq -r '.[0]' <(echo $VM_IPV4S_JSON)):
+              agent:
+                hosts:
+          $(jq -r '.[1:][]' <(echo $VM_IPV4S_JSON) | while read -r ipv4; do echo "        $ipv4:"; done)
+          EOF
+        env:
+          VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
+
+      - name: setup ssh-agent with private ssh key for vms
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: wait 1 min for all hetzner vms to become accessible
+        run: sleep 60
+
+      - name: deploy k3s onto hetzner vms
+        run: ansible-playbook playbooks/site.yml -i inventory.yml
+        working-directory: k3s-ansible/

@@ -10,20 +10,11 @@ users:
 write_files:
   - path: /etc/ssh/sshd_config.d/00-sodacity.conf
     content: |
-      Port 2222
       PermitRootLogin no
       PasswordAuthentication no
       PubkeyAuthentication yes
       MaxAuthTries 3
 
-package_update: true
-package_upgrade: true
-
-packages:
-  - ufw
-
 runcmd:
-  - ufw default deny incoming
-  - ufw allow 2222/tcp
-  - ufw enable
+  # apply above specified SSH config
   - systemctl restart ssh
