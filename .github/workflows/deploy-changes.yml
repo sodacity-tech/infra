@@ -31,6 +31,10 @@ jobs:
           echo "terraform_plan_exitcode=$?" >> $GITHUB_OUTPUT
         id: exec_terraform_plan
 
+      - env:
+          TERRAFORM_PLAN_EXITCODE: ${{ steps.exec_terraform_plan.outputs.terraform_plan_exitcode }}
+        run: echo $TERRAFORM_PLAN_EXITCODE
+
       - name: save terraform plan as artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
