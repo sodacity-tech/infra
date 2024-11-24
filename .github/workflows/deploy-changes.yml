@@ -21,15 +21,27 @@ jobs:
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: 1.9.8
+          terraform_wrapper: false # needed to get correct exitcode from terraform plan
 
       - name: initialize terraform
         run: terraform init
 
       - name: generate terraform plan & capture exit code
-        run: |
-          terraform plan -input=false -detailed-exitcode -out=tf.plan
-          echo "terraform_plan_exitcode=$?" >> $GITHUB_OUTPUT
         id: exec_terraform_plan
+        run: |
+          set +e
+          terraform plan -input=false -detailed-exitcode -out=tf.plan
+          exitcode=$?
+          set -e
+
+          if [[ $exitcode -eq 2 ]]; then
+            echo "'terraform plan' succeeded with non-empty diff..."
+            exit 0
+          else
+            exit $exitcode
+          fi
+
+          echo "terraform_plan_exitcode=$?" >> $GITHUB_OUTPUT
 
       - env:
           TERRAFORM_PLAN_EXITCODE: ${{ steps.exec_terraform_plan.outputs.terraform_plan_exitcode }}
@@ -72,8 +84,8 @@ jobs:
         run: terraform apply -input=false -auto-approve tf.plan
 
       - name: save ip addresses of hetzner vms from terraform output as stringified json array
-        run: echo "hcloud_vm_ipv4s_json=$(jq -Mc .hcloud_vm_ipv4s.value <(terraform output -json))" >> $GITHUB_OUTPUT
         id: get_hcloud_vm_ipv4s
+        run: echo "hcloud_vm_ipv4s_json=$(jq -Mc .hcloud_vm_ipv4s.value <(terraform output -json))" >> $GITHUB_OUTPUT
 
   k3s_deploy:
     runs-on: ubuntu-24.04
