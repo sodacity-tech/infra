@@ -22,7 +22,6 @@ resource "hcloud_server" "server" {
   ssh_keys = [hcloud_ssh_key.main.id]
 
   lifecycle {
-    create_before_destroy = true
     ignore_changes        = [ssh_keys]
   }
 }
