@@ -3,10 +3,10 @@ name: deploy infra changes
 on: workflow_dispatch
 
 env:
-  AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
-  AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-  TF_VAR_hcloud_api_token: "${{ secrets.HCLOUD_API_TOKEN }}"
-  TF_VAR_vm_ssh_key: "${{ vars.VM_SSH_KEY }}"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_VAR_hcloud_api_token: ${{ secrets.HCLOUD_API_TOKEN }}
+  TF_VAR_vm_ssh_key: ${{ vars.VM_SSH_KEY }}
 
 jobs:
   terraform_plan:
