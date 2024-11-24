@@ -9,10 +9,10 @@ env:
   TF_VAR_vm_ssh_key: "${{ vars.VM_SSH_KEY }}"
 
 jobs:
-  plan:
+  terraform_plan:
     runs-on: ubuntu-24.04
     outputs:
-      terraform_plan_exitcode: ${{ steps.terraform_plan.outputs.exitcode }}
+      terraform_plan_exitcode: ${{ steps.terraform_plan_exec.outputs.exitcode }}
     steps:
       - name: checkout this repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -29,7 +29,7 @@ jobs:
         run: |
           terraform plan -input=false -detailed-exitcode -out=tf.plan
           echo "exitcode=$?" >> "$GITHUB_OUTPUT"
-        id: terraform_plan
+        id: terraform_plan_exec
 
       - name: save terraform plan as artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
@@ -37,7 +37,7 @@ jobs:
           name: tf-plan-${{ github.run_id }}
           path: tf.plan
 
-  apply:
+  terraform_apply:
     runs-on: ubuntu-24.04
     needs: plan
     if: needs.plan.outputs.terraform_plan_exitcode == 2
