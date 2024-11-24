@@ -1,4 +1,4 @@
-name: validate & check formatting of terraform code
+name: lint code & check style
 
 on: push
 

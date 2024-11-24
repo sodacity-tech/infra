@@ -1,4 +1,4 @@
-name: generate terraform plan & apply it
+name: deploy infra changes
 
 on: workflow_dispatch
 
@@ -11,6 +11,8 @@ env:
 jobs:
   plan:
     runs-on: ubuntu-24.04
+    outputs:
+      terraform_plan_exitcode: ${{ steps.terraform_plan.outputs.exitcode }}
     steps:
       - name: checkout this repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -23,8 +25,11 @@ jobs:
       - name: initialize terraform
         run: terraform init
 
-      - name: generate terraform plan
-        run: terraform plan -input=false -detailed-exitcode -out=tf.plan
+      - name: generate terraform plan & capture exit code
+        run: |
+          terraform plan -input=false -detailed-exitcode -out=tf.plan
+          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+        id: terraform_plan
 
       - name: save terraform plan as artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
@@ -35,6 +40,7 @@ jobs:
   apply:
     runs-on: ubuntu-24.04
     needs: plan
+    if: needs.plan.outputs.terraform_plan_exitcode == 2
     environment: prod
     steps:
       - name: checkout this repo
