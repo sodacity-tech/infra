@@ -34,14 +34,14 @@ jobs:
           exitcode=$?
           set -e
 
+          echo "terraform_plan_exitcode=$exitcode" >> $GITHUB_OUTPUT
+
           if [[ $exitcode -eq 2 ]]; then
             echo "'terraform plan' succeeded with non-empty diff..."
             exit 0
           else
             exit $exitcode
           fi
-
-          echo "terraform_plan_exitcode=$?" >> $GITHUB_OUTPUT
 
       - env:
           TERRAFORM_PLAN_EXITCODE: ${{ steps.exec_terraform_plan.outputs.terraform_plan_exitcode }}
