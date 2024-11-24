@@ -25,12 +25,10 @@ packages:
 runcmd:
   # set up ufw
   - ufw default deny incoming
-
   - ufw allow 2222/tcp # ssh on port 2222
   - ufw allow 6443/tcp # k3s apiserver
   - ufw allow from 10.42.0.0/16 to any # k3s pods
   - ufw allow from 10.43.0.0/16 to any # k3s services
-
   - ufw enable
 
   # apply ssh configuration
