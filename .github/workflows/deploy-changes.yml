@@ -12,7 +12,7 @@ jobs:
   terraform_plan:
     runs-on: ubuntu-24.04
     outputs:
-      terraform_plan_exitcode: ${{ steps.terraform_plan_exec.outputs.exitcode }}
+      terraform_plan_exitcode: ${{ steps.exec_terraform_plan.outputs.terraform_plan_exitcode }}
     steps:
       - name: checkout this repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -28,8 +28,8 @@ jobs:
       - name: generate terraform plan & capture exit code
         run: |
           terraform plan -input=false -detailed-exitcode -out=tf.plan
-          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
-        id: terraform_plan_exec
+          echo "terraform_plan_exitcode=$?" >> $GITHUB_OUTPUT
+        id: exec_terraform_plan
 
       - name: save terraform plan as artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
@@ -42,6 +42,8 @@ jobs:
     needs: terraform_plan
     if: needs.terraform_plan.outputs.terraform_plan_exitcode == 2
     environment: prod
+    outputs:
+      hcloud_vm_ipv4s_json: ${{ steps.get_hcloud_vm_ipv4s.outputs.hcloud_vm_ipv4s_json }}
     steps:
       - name: checkout this repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -59,5 +61,20 @@ jobs:
         with:
           name: tf-plan-${{ github.run_id }}
 
+      - name: install jq
+        run: sudo apt install jq -y
+
       - name: apply terraform plan
         run: terraform apply -input=false -auto-approve tf.plan
+
+      - name: save ip addresses of hetzner vms from terraform output as stringified json array
+        run: echo "hcloud_vm_ipv4s_json=$(jq -Mc .hcloud_vm_ipv4s.value <(terraform output -json))" >> $GITHUB_OUTPUT
+        id: get_hcloud_vm_ipv4s
+
+  k3s_deploy:
+    runs-on: ubuntu-24.04
+    needs: terraform_apply
+    steps:
+      - env:
+          HCLOUD_VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
+        run: echo $HCLOUD_VM_IPV4S_JSON
