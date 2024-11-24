@@ -25,4 +25,4 @@ jobs:
         run: terraform validate
 
       - name: check terraform code formatting
-        run: terraform fmt -write=false -diff
+        run: terraform fmt -write=false -check -diff
