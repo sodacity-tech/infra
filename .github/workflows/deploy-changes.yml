@@ -39,8 +39,8 @@ jobs:
 
   terraform_apply:
     runs-on: ubuntu-24.04
-    needs: plan
-    if: needs.plan.outputs.terraform_plan_exitcode == 2
+    needs: terraform_plan
+    if: needs.terraform_plan.outputs.terraform_plan_exitcode == 2
     environment: prod
     steps:
       - name: checkout this repo
