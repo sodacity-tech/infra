@@ -1,0 +1,28 @@
+name: validate & check formatting of terraform code
+
+on: push
+
+env:
+  AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+  AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+
+jobs:
+  terraform_validate_fmt:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout this repo
+        uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb
+
+      - name: set up terraform
+        uses: hashicorp/setup-terraform@344fef46b6edc7c46ce8b3b8b0a3ece7e77e05f0
+        with:
+          terraform_version: 1.9.8
+
+      - name: initialize terraform
+        run: terraform init
+
+      - name: validate terraform code
+        run: terraform validate
+
+      - name: check terraform code formatting
+        run: terraform fmt -write=false -diff

@@ -1,0 +1,29 @@
+#cloud-config
+users:
+  - name: soda
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/00-sodacity.conf
+    content: |
+      Port 2222
+      PermitRootLogin no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      MaxAuthTries 3
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ufw
+
+runcmd:
+  - ufw default deny incoming
+  - ufw allow 2222/tcp
+  - ufw enable
+  - systemctl restart ssh
