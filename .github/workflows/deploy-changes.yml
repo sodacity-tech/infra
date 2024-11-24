@@ -20,7 +20,7 @@ jobs:
       - name: set up terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
-          terraform_version: 1.9.8
+          terraform_version: ">= 1.9.8"
           terraform_wrapper: false # needed to get correct exitcode from terraform plan
 
       - name: initialize terraform
@@ -67,7 +67,7 @@ jobs:
       - name: set up terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
-          terraform_version: 1.9.8
+          terraform_version: ">= 1.9.8"
 
       - name: initialize terraform
         run: terraform init
