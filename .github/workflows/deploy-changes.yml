@@ -73,9 +73,6 @@ jobs:
         with:
           name: tf-plan-${{ github.run_id }}
 
-      - name: install jq
-        run: sudo apt install jq -y
-
       - name: apply terraform plan
         run: terraform apply -input=false -auto-approve tf.plan
 
