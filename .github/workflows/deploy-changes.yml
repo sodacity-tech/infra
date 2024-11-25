@@ -84,6 +84,35 @@ jobs:
     runs-on: ubuntu-24.04
     needs: terraform_apply
     steps:
-      - env:
-          HCLOUD_VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
-        run: echo $HCLOUD_VM_IPV4S_JSON
+      - name: checkout this repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: set up python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: 3.11.2
+          cache: pip
+
+      - name: install pip requirements
+        run: pip install -r cicd_helpers/requirements.txt
+
+      - name: generate ansible inventory for k3s deploy
+        run: python cicd_helpers/generate_k3s_inventory.py
+        env:
+          VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
+
+      - name: checkout k3s-ansible repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: k3s-io/k3s-ansible
+          ref: 2a5a89a5ad5afc8ce0bd6112450e956dcdcde74f
+          path: k3s-ansible
+
+      - name: deploy k3s onto hetzner vms
+        uses: dawidd6/action-ansible-playbook@c97d71562fcba83cc1ea0602d5a77013427f7571
+        with:
+          playbook: site.yml
+          directory: k3s-ansible/playbooks/
+          key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          options: |
+            --inventory=inventory.yml
