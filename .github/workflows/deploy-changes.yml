@@ -115,6 +115,9 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
 
+      - name: wait 1 min for all hetzner vms to become accessible
+        run: sleep 60
+
       - name: deploy k3s onto hetzner vms
         run: ansible-playbook playbooks/site.yml -i inventory.yml
         working-directory: k3s-ansible/
