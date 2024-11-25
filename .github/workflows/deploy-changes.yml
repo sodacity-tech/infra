@@ -111,8 +111,8 @@ jobs:
       - name: deploy k3s onto hetzner vms
         uses: dawidd6/action-ansible-playbook@c97d71562fcba83cc1ea0602d5a77013427f7571
         with:
-          playbook: site.yml
-          directory: k3s-ansible/playbooks/
+          playbook: playbooks/site.yml
+          directory: k3s-ansible/
           key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
           options: |
-            --inventory=inventory.yml
+            --inventory=${{ github.workspace }}/inventory.yml
