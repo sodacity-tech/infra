@@ -96,11 +96,6 @@ jobs:
       - name: install pip requirements
         run: pip install -r cicd_helpers/requirements.txt
 
-      - name: generate ansible inventory for k3s deploy
-        run: python cicd_helpers/generate_k3s_inventory.py
-        env:
-          VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
-
       - name: checkout k3s-ansible repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -108,11 +103,18 @@ jobs:
           ref: 2a5a89a5ad5afc8ce0bd6112450e956dcdcde74f
           path: k3s-ansible
 
-      - name: deploy k3s onto hetzner vms
-        uses: dawidd6/action-ansible-playbook@c97d71562fcba83cc1ea0602d5a77013427f7571
+      - name: generate ansible inventory for k3s deploy
+        run: |
+          python cicd_helpers/generate_k3s_inventory.py
+          mv inventory.yml k3s-ansible/
+        env:
+          VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
+
+      - name: setup ssh-agent with private ssh key for vms
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387
         with:
-          playbook: playbooks/site.yml
-          directory: k3s-ansible/
-          key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
-          options: |
-            --inventory=${{ github.workspace }}/inventory.yml
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: deploy k3s onto hetzner vms
+        run: ansible-playbook playbooks/site.yml -i inventory.yml
+        working-directory: k3s-ansible/
