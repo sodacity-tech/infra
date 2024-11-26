@@ -18,7 +18,6 @@ write_files:
 
 package_update: true
 package_upgrade: true
-
 packages:
   - ufw
 
@@ -30,5 +29,6 @@ runcmd:
   - ufw allow from 10.42.0.0/16 to any # k3s pods
   - ufw allow from 10.43.0.0/16 to any # k3s services
   - ufw enable
+
   # apply ssh configuration
   - systemctl restart ssh
