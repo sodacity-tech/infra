@@ -87,15 +87,6 @@ jobs:
       - name: checkout this repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: set up python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
-        with:
-          python-version: 3.11.2
-          cache: pip
-
-      - name: install pip requirements
-        run: pip install -r cicd_helpers/requirements.txt
-
       - name: checkout k3s-ansible repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -105,8 +96,21 @@ jobs:
 
       - name: generate ansible inventory for k3s deploy
         run: |
-          python cicd_helpers/generate_k3s_inventory.py
-          mv inventory.yml k3s-ansible/
+          cat <<EOF > k3s-ansible/inventory.yml
+          k3s_cluster:
+            vars:
+              ansible_port: 2222
+              ansible_user: soda
+              k3s_version: v1.30.2+k3s1
+              api_endpoint: "{{hostvars[groups.server[0]].ansible_host|default(groups.server[0])}}"
+            children:
+              server:
+                hosts:
+                  $(jq -r '.[0]' <(echo $VM_IPV4S_JSON)):
+              agent:
+                hosts:
+          $(jq -r '.[1:][]' <(echo $VM_IPV4S_JSON) | while read -r ipv4; do echo "        $ipv4:"; done)
+          EOF
         env:
           VM_IPV4S_JSON: ${{ needs.terraform_apply.outputs.hcloud_vm_ipv4s_json }}
 
